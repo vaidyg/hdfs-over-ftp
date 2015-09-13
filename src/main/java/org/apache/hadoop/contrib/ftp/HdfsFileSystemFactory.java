@@ -45,7 +45,7 @@ public class HdfsFileSystemFactory implements FileSystemFactory {
 
     private boolean createHome;
 
-    private boolean caseInsensitive;
+    private boolean caseInsensitive = false;
 
     /**
      * Should the home directories be created automatically
@@ -79,7 +79,8 @@ public class HdfsFileSystemFactory implements FileSystemFactory {
      * @param caseInsensitive true if this file system should be case insensitive
      */
     public void setCaseInsensitive(boolean caseInsensitive) {
-        this.caseInsensitive = caseInsensitive;
+        // Always sensitive
+        this.caseInsensitive = false;
     }
 
 

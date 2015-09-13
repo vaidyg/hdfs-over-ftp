@@ -74,7 +74,8 @@ public class HdfsFileSystemView implements FileSystemView {
 					"User home directory can not be null");
 		}
 
-		this.caseInsensitive = caseInsensitive;
+		// Always sensitive
+		// this.caseInsensitive = caseInsensitive;
 
 		// add last '/' if necessary
 		String rootDir = user.getHomeDirectory();
