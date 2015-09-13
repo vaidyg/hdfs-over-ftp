@@ -27,16 +27,15 @@ public class HdfsOverFtpSystem {
 
 	private static void hdfsInit() throws IOException {
 		dfs = new DistributedFileSystem();
-		System.setProperty("HADOOP_USER_NAME", hdfsuser);
 		Configuration conf = new Configuration();
 		conf.set("hadoop.job.ugi", hdfsuser + "," + hdfsgroup);
 		try {
-			log.info("Connecting to HDFS " + HDFS_URI + " as " + hdfsuser + ", " + hdfsgroup + "");
+			log.debug("Connecting to HDFS " + HDFS_URI + " as " + hdfsuser + ", " + hdfsgroup + "");
 			dfs.initialize(new URI(HDFS_URI), conf);
 
 			if (hdfsuser.equals(System.getProperty("user.name")) == false) {
 				// Running user is different that HDFS user - use setOwner
-				log.info("Use setOwner");
+				log.debug("Use setOwner");
 				setowner = true;
 			}
 		} catch (URISyntaxException e) {
@@ -68,6 +67,7 @@ public class HdfsOverFtpSystem {
 	 */
 	public static void setHDFSUser(String hdfsuser) {
 		HdfsOverFtpSystem.hdfsuser = hdfsuser;
+		System.setProperty("HADOOP_USER_NAME", hdfsuser);
 	}
 
 	/**

@@ -177,7 +177,6 @@ public class HdfsUser implements User, Serializable {
 	 * Get the user home directory.
 	 */
 	public String getHomeDirectory() {
-		log.info("getHomeDirectory - " + homeDir);
 		return homeDir;
 	}
 
@@ -186,7 +185,6 @@ public class HdfsUser implements User, Serializable {
 	 */
 	public void setHomeDirectory(String home) {
 		homeDir = home;
-		log.info("setHomeDirectory - " + homeDir);
 	}
 
 	/**

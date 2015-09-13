@@ -423,9 +423,9 @@ public class HdfsUserManager extends AbstractUserManager {
 				throw new AuthenticationFailedException("Authentication failed");
 			}
 
-			LOG.info("Password - passed  - " + password);
-			LOG.info("Password - encrypt - " + passwordEncryptor.encrypt(password));
-			LOG.info("Password - stored  - " + storedPassword);
+			//LOG.info("Password - passed  - " + password);
+			//LOG.info("Password - encrypt - " + passwordEncryptor.encrypt(password));
+			//LOG.info("Password - stored  - " + storedPassword);
 
 			if (passwordEncryptor.matches(password, storedPassword)) {
 				return getUserByName(user);

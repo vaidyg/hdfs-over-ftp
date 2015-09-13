@@ -34,7 +34,11 @@ public class HdfsOverFtpServer {
 	private static int sslPort = 0;
 	private static String passivePorts = null;
 	private static String sslPassivePorts = null;
+	private static String externaladdress = null;
+	private static String sslexternaladdress = null;
 	private static String hdfsUri = null;
+	private static String hdfsuser = null;
+	private static String hdfsgroup = null;
 	private static String approot = "";
 
 	public static void main(String[] args) throws Exception {
@@ -109,19 +113,15 @@ public class HdfsOverFtpServer {
 
 		if (port != 0) {
 			passivePorts = props.getProperty("data-ports");
-			if (passivePorts == null) {
-				log.fatal("data-ports is not set");
-				System.exit(1);
-			}
 		}
 
 		if (sslPort != 0) {
 			sslPassivePorts = props.getProperty("ssl-data-ports");
-			if (sslPassivePorts == null) {
-				log.fatal("ssl-data-ports is not set");
-				System.exit(1);
-			}
 		}
+
+		externaladdress = props.getProperty("external-address");
+
+		sslexternaladdress = props.getProperty("ssl-external-address");
 
 		hdfsUri = props.getProperty("hdfs-uri");
 		if (hdfsUri == null) {
@@ -129,14 +129,13 @@ public class HdfsOverFtpServer {
 			System.exit(1);
 		}
 
-		String hdfsuser = props.getProperty("hdfsuser");
+		hdfsuser = props.getProperty("hdfsuser");
 		if (hdfsuser == null) {
 			hdfsuser = System.getProperty("user.name");
-			log.info("Setting to running user - " + hdfsuser);
 		}
 		HdfsOverFtpSystem.setHDFSUser(hdfsuser);
 
-		String hdfsgroup = props.getProperty("hdfsgroup");
+		hdfsgroup = props.getProperty("hdfsgroup");
 		if (hdfsgroup == null) {
 			log.fatal("hdfsgroup is not set");
 			System.exit(1);
@@ -150,7 +149,7 @@ public class HdfsOverFtpServer {
 	 * @throws Exception
 	 */
 	public static void startServer() throws Exception {
-		log.info("Starting Hdfs-Over-Ftp server. port: " + port + " data-ports: " + passivePorts + " hdfs-uri: " + hdfsUri);
+		log.info("Starting Hdfs-Over-Ftp server - port: " + port + " hdfs-uri: " + hdfsUri + " usr: " + hdfsuser + " grp: " + hdfsgroup);
 
 		HdfsOverFtpSystem.setHDFS_URI(hdfsUri);
 
@@ -158,9 +157,21 @@ public class HdfsOverFtpServer {
 		ListenerFactory listenFactory = new ListenerFactory();
 
 		DataConnectionConfigurationFactory dataConFactory = new DataConnectionConfigurationFactory();
-		DataConnectionConfiguration dataCon = dataConFactory.createDataConnectionConfiguration();
-		dataConFactory.setPassivePorts(passivePorts);
 
+		if (passivePorts != null) {
+			log.info("Passive ports: " + passivePorts + "");
+			dataConFactory.setPassivePorts(passivePorts);
+		}
+		if (externaladdress != null) {
+			log.info("External address: " + externaladdress + "");
+			dataConFactory.setPassiveExternalAddress(externaladdress);
+		}
+		if ((passivePorts != null) || (externaladdress != null)) {
+			log.info("Passive mode enabled");
+			dataConFactory.setActiveEnabled(false);
+		}
+
+		DataConnectionConfiguration dataCon = dataConFactory.createDataConnectionConfiguration();
 		listenFactory.setDataConnectionConfiguration(dataCon);
 		listenFactory.setPort(port);
 		serverFactory.addListener("default", listenFactory.createListener());
@@ -174,7 +185,7 @@ public class HdfsOverFtpServer {
 		userManager.setFile(userFile);
 		userManager.configure();
 		serverFactory.setUserManager(userManager);
-		serverFactory.setFileSystem(new HdfsFileSystemManager());
+		serverFactory.setFileSystem(new HdfsFileSystemFactory());
 
 		FtpServer server = serverFactory.createServer();
 		server.start();
@@ -186,7 +197,7 @@ public class HdfsOverFtpServer {
 	 * @throws Exception
 	 */
 	public static void startSSLServer() throws Exception {
-		log.info("Starting Hdfs-Over-Ftp SSL server. ssl-port: " + sslPort + " ssl-data-ports: " + sslPassivePorts + " hdfs-uri: " + hdfsUri);
+		log.info("Starting Hdfs-Over-Ftp SSL server - ssl-port: " + sslPort + " hdfs-uri: " + hdfsUri + " usr: " + hdfsuser + " grp: " + hdfsgroup);
 
 		HdfsOverFtpSystem.setHDFS_URI(hdfsUri);
 
@@ -194,9 +205,21 @@ public class HdfsOverFtpServer {
 		ListenerFactory listenFactory = new ListenerFactory();
 
 		DataConnectionConfigurationFactory dataConFactory = new DataConnectionConfigurationFactory();
-		DataConnectionConfiguration dataCon = dataConFactory.createDataConnectionConfiguration();
-		dataConFactory.setPassivePorts(sslPassivePorts);
 
+		if (sslPassivePorts != null) {
+			log.info("SSL passive ports: " + sslPassivePorts + "");
+			dataConFactory.setPassivePorts(sslPassivePorts);
+		}
+		if (sslexternaladdress != null) {
+			log.info("SSL external address: " + sslexternaladdress + "");
+			dataConFactory.setPassiveExternalAddress(sslexternaladdress);
+		}
+		if ((sslPassivePorts != null) || (sslexternaladdress != null)) {
+			log.info("SSL passive mode enabled");
+			dataConFactory.setActiveEnabled(false);
+		}
+
+		DataConnectionConfiguration dataCon = dataConFactory.createDataConnectionConfiguration();
 		listenFactory.setDataConnectionConfiguration(dataCon);
 		listenFactory.setPort(sslPort);
 
@@ -218,7 +241,7 @@ public class HdfsOverFtpServer {
 		userManager.setFile(userFile);
 		userManager.configure();
 		serverFactory.setUserManager(userManager);
-		serverFactory.setFileSystem(new HdfsFileSystemManager());
+		serverFactory.setFileSystem(new HdfsFileSystemFactory());
 
 		FtpServer server = serverFactory.createServer();
 		server.start();
