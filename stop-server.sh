@@ -3,7 +3,7 @@
 pid=/tmp/hdfs-over-ftp.pid
 
 command="hdfs-over-ftp"
-usage="Usage: hdfs-over-ftp.sh (start|stop)"
+usage="Usage: stop-server.sh"
 cmd=stop
 
 case $cmd in

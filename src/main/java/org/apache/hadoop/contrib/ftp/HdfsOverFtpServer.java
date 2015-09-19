@@ -52,9 +52,9 @@ public class HdfsOverFtpServer {
 		Options options = new Options();
 		options.addOption("h", "help", false, "WYSIWYG");
 		options.addOption(OptionBuilder.withLongOpt("approot")
-			.withDescription("use FILE-path with trailing slash")
+			.withDescription("use PATH - with trailing slash")
 			.hasArg()
-			.withArgName("FILE")
+			.withArgName("PATH")
 			.create());
 
 		try {

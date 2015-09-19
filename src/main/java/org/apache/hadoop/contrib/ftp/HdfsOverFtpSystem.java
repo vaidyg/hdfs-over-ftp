@@ -20,7 +20,6 @@ public class HdfsOverFtpSystem {
 
 	private static String hdfsuser = "error";
 	private static String hdfsgroup = "error";
-	private static boolean setowner = false;
 
 	private final static Logger log = LoggerFactory.getLogger(HdfsOverFtpSystem.class);
 
@@ -32,12 +31,6 @@ public class HdfsOverFtpSystem {
 		try {
 			log.debug("Connecting to HDFS " + HDFS_URI + " as " + hdfsuser + ", " + hdfsgroup + "");
 			dfs.initialize(new URI(HDFS_URI), conf);
-
-			if (hdfsuser.equals(System.getProperty("user.name")) == false) {
-				// Running user is different that HDFS user - use setOwner
-				log.debug("Use setOwner");
-				setowner = true;
-			}
 		} catch (URISyntaxException e) {
 			log.error("DFS Initialization error", e);
 		}
@@ -80,11 +73,11 @@ public class HdfsOverFtpSystem {
 	}
 
 	/**
-	 * Get setowner
+	 * Get hdfsuser
 	 *
-	 * @return setowner
+	 * @return hdfsuser
 	 */
-	public static boolean getSetOwner() {
-		return setowner;
+	public static String getHdfsUser() {
+		return hdfsuser;
 	}
 }

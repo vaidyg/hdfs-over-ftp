@@ -120,7 +120,7 @@ public class HdfsFileSystemFactory implements FileSystemFactory {
                     if (doesExist(dfs, homeDirPath) == false) {
                         dfs.mkdirs(homeDirPath);
                         LOG.info("Created directory " + homeDirStr);
-                        if (HdfsOverFtpSystem.getSetOwner() == true) {
+                        if (huser.getName().equals(HdfsOverFtpSystem.getHdfsUser()) == false) {
                             dfs.setOwner(homeDirPath, huser.getName(), huser.getMainGroup());
                         }
                     }
