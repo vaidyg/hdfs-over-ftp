@@ -3,6 +3,7 @@ package org.apache.hadoop.contrib.ftp;
 import org.apache.ftpserver.FtpServerConfigurationException;
 import org.apache.ftpserver.ftplet.*;
 import org.apache.ftpserver.usermanager.*;
+import org.apache.ftpserver.usermanager.impl.*;
 import org.apache.ftpserver.util.BaseProperties;
 import org.apache.ftpserver.util.IoUtils;
 import org.slf4j.Logger;
@@ -32,8 +33,27 @@ public class HdfsUserManager extends AbstractUserManager {
 
 	private boolean isConfigured = false;
 
+	private String adminName = "admin";
+
 	private PasswordEncryptor passwordEncryptor = new Md5PasswordEncryptor();
 
+
+	/**
+	 * Default constructor.
+	 */
+	public HdfsUserManager() {
+		this("admin", new Md5PasswordEncryptor());
+	}
+
+	public HdfsUserManager(String adminName, PasswordEncryptor passwordEncryptor) {
+		super(adminName, passwordEncryptor);
+		this.adminName = adminName;
+		this.passwordEncryptor = passwordEncryptor;
+	}
+
+	//public HdfsUserManager() {
+	//    super("admin", new Md5PasswordEncryptor());
+	//}
 
 	/**
 	 * Retrieve the file used to load and store users
@@ -93,6 +113,7 @@ public class HdfsUserManager extends AbstractUserManager {
 	 * Configure user manager.
 	 */
 	public void configure() {
+		LOG.debug("Configuring - " + userDataFile.getName());
 		isConfigured = true;
 		try {
 			userDataProp = new BaseProperties();
@@ -102,6 +123,7 @@ public class HdfsUserManager extends AbstractUserManager {
 				try {
 					fis = new FileInputStream(userDataFile);
 					userDataProp.load(fis);
+					LOG.debug("Read file - " + userDataFile.getName());
 				} finally {
 					IoUtils.close(fis);
 				}
@@ -400,6 +422,10 @@ public class HdfsUserManager extends AbstractUserManager {
 				// user does not exist
 				throw new AuthenticationFailedException("Authentication failed");
 			}
+
+			//LOG.info("Password - passed  - " + password);
+			//LOG.info("Password - encrypt - " + passwordEncryptor.encrypt(password));
+			//LOG.info("Password - stored  - " + storedPassword);
 
 			if (passwordEncryptor.matches(password, storedPassword)) {
 				return getUserByName(user);

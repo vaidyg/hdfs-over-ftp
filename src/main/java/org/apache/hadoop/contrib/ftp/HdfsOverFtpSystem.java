@@ -18,8 +18,8 @@ public class HdfsOverFtpSystem {
 
 	public static String HDFS_URI = "";
 
-	private static String superuser = "error";
-	private static String supergroup = "supergroup";
+	private static String hdfsuser = "error";
+	private static String hdfsgroup = "error";
 
 	private final static Logger log = LoggerFactory.getLogger(HdfsOverFtpSystem.class);
 
@@ -27,8 +27,9 @@ public class HdfsOverFtpSystem {
 	private static void hdfsInit() throws IOException {
 		dfs = new DistributedFileSystem();
 		Configuration conf = new Configuration();
-		conf.set("hadoop.job.ugi", superuser + "," + supergroup);
+		conf.set("hadoop.job.ugi", hdfsuser + "," + hdfsgroup);
 		try {
+			log.debug("Connecting to HDFS " + HDFS_URI + " as " + hdfsuser + ", " + hdfsgroup + "");
 			dfs.initialize(new URI(HDFS_URI), conf);
 		} catch (URISyntaxException e) {
 			log.error("DFS Initialization error", e);
@@ -53,38 +54,30 @@ public class HdfsOverFtpSystem {
 	}
 
 	/**
-	 * Set superuser. and we connect to DFS as a superuser
+	 * Set hdfsuser and we connect to DFS as a hdfsuser
 	 *
-	 * @param superuser
+	 * @param hdfsuser
 	 */
-	public static void setSuperuser(String superuser) {
-		HdfsOverFtpSystem.superuser = superuser;
+	public static void setHDFSUser(String hdfsuser) {
+		HdfsOverFtpSystem.hdfsuser = hdfsuser;
+		System.setProperty("HADOOP_USER_NAME", hdfsuser);
 	}
 
-//  public static String dirList(String path) throws IOException {
-//    String res = "";
-//
-//        getDfs();
-//
-//        Path file = new Path(path);
-//        FileStatus fileStats[] = dfs.listStatus(file);
-//
-//        for (FileStatus fs : fileStats) {
-//            if (fs.isDir()) {
-//                res += "d";
-//            } else {
-//                res += "-";
-//            }
-//
-//            res += fs.getPermission();
-//            res += " 1";
-//            res += " " + fs.getOwner();
-//            res += " " + fs.getGroup();
-//            res += " " + fs.getLen();
-//            res += " " + new Date(fs.getModificationTime()).toString().substring(4, 16);
-//            res += " " + fs.getPath().getName();
-//            res += "\n";
-//        }
-//    return res;
-//  }
+	/**
+	 * Set hdfsgroup and we connect to DFS as a hdfsgroup
+	 *
+	 * @param hdfsgroup
+	 */
+	public static void setHDFSGroup(String hdfsgroup) {
+		HdfsOverFtpSystem.hdfsgroup = hdfsgroup;
+	}
+
+	/**
+	 * Get hdfsuser
+	 *
+	 * @return hdfsuser
+	 */
+	public static String getHdfsUser() {
+		return hdfsuser;
+	}
 }

@@ -6,6 +6,7 @@ import org.apache.ftpserver.ftplet.User;
 import org.apache.log4j.Logger;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,10 +45,12 @@ public class HdfsUser implements User, Serializable {
 	public HdfsUser(User user) {
 		name = user.getName();
 		password = user.getPassword();
-		authorities = user.getAuthorities();
 		maxIdleTimeSec = user.getMaxIdleTime();
 		homeDir = user.getHomeDirectory();
 		isEnabled = user.getEnabled();
+
+		List<Authority> auths = user.getAuthorities();
+		authorities = auths.toArray(new Authority[auths.size()]);
 	}
 
 	public ArrayList<String> getGroups() {
@@ -123,9 +126,9 @@ public class HdfsUser implements User, Serializable {
 		password = pass;
 	}
 
-	public Authority[] getAuthorities() {
+	public List<Authority> getAuthorities() {
 		if (authorities != null) {
-			return authorities.clone();
+			return Arrays.asList(authorities);
 		} else {
 			return null;
 		}
@@ -191,11 +194,41 @@ public class HdfsUser implements User, Serializable {
 		return name;
 	}
 
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public boolean canAuthorize(AuthorizationRequest request) {
+		List<Authority> auths = getAuthorities();
+		Authority[] authorities = auths.toArray(new Authority[auths.size()]);
+
+		if (authorities == null) {
+			return false;
+		}
+
+		boolean someoneCouldAuthorize = false;
+		for (int i = 0; i < authorities.length; i++) {
+			Authority authority = authorities[i];
+
+			if (authority.canAuthorize(request)) {
+				someoneCouldAuthorize = true;
+				break;
+			}
+		}
+
+		if (someoneCouldAuthorize) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
 	public AuthorizationRequest authorize(AuthorizationRequest request) {
-		Authority[] authorities = getAuthorities();
+		List<Authority> auths = getAuthorities();
+		Authority[] authorities = auths.toArray(new Authority[auths.size()]);
 
 		// check for no authorities at all
 		if (authorities == null) {
@@ -229,7 +262,7 @@ public class HdfsUser implements User, Serializable {
 	/**
 	 * {@inheritDoc}
 	 */
-	public Authority[] getAuthorities(Class<? extends Authority> clazz) {
+	public List<Authority> getAuthorities(Class<? extends Authority> clazz) {
 		List<Authority> selected = new ArrayList<Authority>();
 
 		for (int i = 0; i < authorities.length; i++) {
@@ -238,6 +271,6 @@ public class HdfsUser implements User, Serializable {
 			}
 		}
 
-		return selected.toArray(new Authority[0]);
+		return selected;
 	}
 }
