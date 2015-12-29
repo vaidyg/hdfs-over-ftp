@@ -7,13 +7,19 @@ FTP server based on [Apache FtpServer](http://mina.apache.org/ftpserver-project/
 * SSL support
 * Passwords are stored as MD5 hashes
 * Users locked into home directory (configured per user)
+* Supports using FTP user or specified user to connect to HDFS
 * JMX for remote statistics viewing and reset
-* Can run on YARN using [Apache Slider](http://slider.incubator.apache.org/) - see [hdfs-over-ftp-slider](https://github.com/jpbelleau/hdfs-over-ftp-slider)
+* Can run on YARN using [Apache Slider](http://slider.incubator.apache.org/) - see [hdfs-over-ftp-slider](https://github.com/OneMainF/hdfs-over-ftp-slider)
+* Can add uploaded filename to Apache ActiveMQ queue
 
 ### Requirements
 * Java (tested with Java 7)
 * Maven
-* HDFS
+* HDFS (2.7.1)
+
+### Building
+* mvn package (run unit tests and build)
+* mvn verify (run unit tests, build, and run integration tests)
 
 ### Configuration
 * Set users in configuration/users.properties
