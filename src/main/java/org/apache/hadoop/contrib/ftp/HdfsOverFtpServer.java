@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.hadoop.contrib.ftp;
 
 import org.apache.ftpserver.impl.DefaultDataConnectionConfiguration;
@@ -5,6 +23,7 @@ import org.apache.ftpserver.FtpServer;
 import org.apache.ftpserver.FtpServerFactory;
 import org.apache.ftpserver.DataConnectionConfigurationFactory;
 import org.apache.ftpserver.DataConnectionConfiguration;
+import org.apache.ftpserver.ftplet.Ftplet;
 import org.apache.ftpserver.listener.ListenerFactory;
 import org.apache.log4j.Logger;
 
@@ -21,6 +40,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -43,8 +66,22 @@ public class HdfsOverFtpServer {
 	private static String hdfsUri = null;
 	private static String hdfsUser = null;
 	private static String hdfsGroup = null;
+	private static boolean useVirtUserForCheck = true;
 	private static String appRoot = "";
-	private static String jmxDomain = "";
+	private static String jmxDomain = null;
+	private static String discoveryMethod = "static";
+	private static String appName = "";
+	private static String compExportName = "";
+	private static String queueHost = null;
+	private static int queuePort = 0;
+	private static String queueName = null;
+	private static String queueUser = null;
+	private static String queuePassword = null;
+
+	private static FtpServer server = null;
+	private static FtpServer sslServer = null;
+
+	private static QueueManagerConfig queueMgrConfig = null;
 
 
 	public static void main(String[] args) throws Exception {
@@ -154,9 +191,55 @@ public class HdfsOverFtpServer {
 		}
 		HdfsOverFtpSystem.setHDFSGroup(hdfsGroup);
 
+		try {
+			useVirtUserForCheck = Boolean.parseBoolean(props.getProperty("usevirtuserforcheck"));
+			log.info("virtual user for checking set - " + useVirtUserForCheck);
+		} catch (Exception e) {
+			useVirtUserForCheck = true;
+			log.info("virtual user for checking not set.  will use HDFS user when checking permissions");
+		}
+
 		jmxDomain = props.getProperty("jmxdomain");
-		if (jmxDomain == null) {
-			jmxDomain = System.getProperty("jmx.domain");
+
+		queueHost = props.getProperty("queuehost");
+		if (queueHost == null) {
+			log.info("queuehost is not set - not adding to a queue");
+		}
+		else {
+			try {
+				queuePort = Integer.parseInt(props.getProperty("queueport"));
+			}
+			catch (Exception e) {
+				log.fatal("queueport must be set if queue host is set");
+				System.exit(1);
+			}
+
+			queueName = props.getProperty("queuename");
+			if (queueName == null) {
+				log.fatal("queuename is not set");
+				System.exit(1);
+			}
+
+			queueUser = props.getProperty("queueuser");
+			if (queueUser == null) {
+				log.info("queueuser is not set");
+				queueUser = "";
+			}
+
+			queuePassword = props.getProperty("queuepassword");
+			if (queuePassword == null) {
+				log.info("queuepassword is not set");
+				queuePassword = "";
+			}
+
+			if (queueHost.indexOf("~") > 0) {
+				String[] queueHostParts = queueHost.split("~");
+				discoveryMethod = queueHostParts[0];
+				appName = queueHostParts[1];
+				compExportName = queueHostParts[2];
+			}
+
+			queueMgrConfig = new QueueManagerConfig(appName, compExportName, discoveryMethod, queueHost, queuePort, queueName, queueUser, queuePassword);
 		}
 	}
 
@@ -202,9 +285,17 @@ public class HdfsOverFtpServer {
 		userManager.setFile(userFile);
 		userManager.configure();
 		serverFactory.setUserManager(userManager);
-		serverFactory.setFileSystem(new HdfsFileSystemFactory());
+		serverFactory.setFileSystem(new HdfsFileSystemFactory(useVirtUserForCheck));
 
-		FtpServer server = serverFactory.createServer(jmxDomain, mBeanName);
+		// Only create queue ftplet if queue params are available
+		if (queueHost != null) {
+			Map<String, Ftplet> ftpletMap = new HashMap<String, Ftplet>();
+			HdfsFtpletQueue ftpletQueue = new HdfsFtpletQueue(queueMgrConfig);
+			ftpletMap.put("ftpletQueue", ftpletQueue);
+			serverFactory.setFtplets(ftpletMap);
+		}
+
+		server = serverFactory.createServer(jmxDomain, mBeanName);
 		server.start();
 	}
 
@@ -258,9 +349,53 @@ public class HdfsOverFtpServer {
 		userManager.setFile(userFile);
 		userManager.configure();
 		serverFactory.setUserManager(userManager);
-		serverFactory.setFileSystem(new HdfsFileSystemFactory());
+		serverFactory.setFileSystem(new HdfsFileSystemFactory(useVirtUserForCheck));
 
-		FtpServer server = serverFactory.createServer(jmxDomain, sslMBeanName);
-		server.start();
+		// Only create queue ftplet if queue params are available
+		if (queueHost != null) {
+			Map<String, Ftplet> ftpletMap = new HashMap<String, Ftplet>();
+			HdfsFtpletQueue ftpletQueue = new HdfsFtpletQueue(queueMgrConfig);
+			ftpletMap.put("ftpletQueue", ftpletQueue);
+			serverFactory.setFtplets(ftpletMap);
+		}
+
+		sslServer = serverFactory.createServer(jmxDomain, sslMBeanName);
+		sslServer.start();
+	}
+
+	/**
+	 * Stops FTP servers
+	 *
+	 * @throws Exception
+	 */
+	public static void stopServers() throws Exception {
+		if (server != null) {
+			stopServer();
+		}
+
+		if (sslServer != null) {
+			stopSSLServer();
+		}
+		HdfsOverFtpSystem.unsetDfs();
+	}
+
+	/**
+	 * Stops FTP server
+	 *
+	 * @throws Exception
+	 */
+	public static void stopServer() throws Exception {
+		log.info("Stopping Hdfs-Over-Ftp server");
+		server.stop();
+	}
+
+	/**
+	 * Stops SSL FTP server
+	 *
+	 * @throws Exception
+	 */
+	public static void stopSSLServer() throws Exception {
+		log.info("Stopping Hdfs-Over-Ftp SSL server");
+		sslServer.stop();
 	}
 }

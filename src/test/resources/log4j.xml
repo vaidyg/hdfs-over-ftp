@@ -28,6 +28,18 @@
         </layout>
     </appender> -->
 
+    <logger name="org.mortbay.log">
+        <level value="WARN"/>
+    </logger>
+
+    <logger name="BlockStateChange">
+        <level value="WARN"/>
+    </logger>
+
+    <logger name="org.apache.hadoop">
+        <level value="WARN"/>
+    </logger>
+
     <logger name="org.apache.hadoop.contrib.ftp">
         <level value="DEBUG"/>
     </logger>

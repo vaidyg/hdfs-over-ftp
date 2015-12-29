@@ -54,28 +54,32 @@ public class HdfsFileSystemView implements FileSystemView {
 
 	private boolean caseInsensitive = false;
 
+	private boolean useVirtUserForCheck = true;
+
 	/**
 	 * Constructor - set the user object.
 	 */
 	protected HdfsFileSystemView(User user) throws FtpException {
-		this(user, true);
+		this(user, true, true);
 	}
 
 	/**
 	 * Constructor - set the user object.
 	 */
-	protected HdfsFileSystemView(User user, boolean caseInsensitive)
+	protected HdfsFileSystemView(User user, boolean caseInsensitive, boolean useVirtUserForCheck)
 			throws FtpException {
 		if (user == null) {
-			throw new IllegalArgumentException("user can not be null");
+			throw new IllegalArgumentException("user cannot be null");
 		}
 		if (user.getHomeDirectory() == null) {
 			throw new IllegalArgumentException(
-					"User home directory can not be null");
+					"User home directory cannot be null");
 		}
 
 		// Always sensitive
 		// this.caseInsensitive = caseInsensitive;
+
+		this.useVirtUserForCheck = useVirtUserForCheck;
 
 		// add last '/' if necessary
 		String rootDir = user.getHomeDirectory();
@@ -93,7 +97,7 @@ public class HdfsFileSystemView implements FileSystemView {
 	 * user.
 	 */
 	public FtpFile getHomeDirectory() {
-		return new HdfsFileObject("/", new Path(rootDir), user);
+		return new HdfsFileObject("/", new Path(rootDir), user, useVirtUserForCheck);
 	}
 
     /**
@@ -102,10 +106,10 @@ public class HdfsFileSystemView implements FileSystemView {
     public FtpFile getWorkingDirectory() {
         FtpFile fileObj = null;
         if (currDir.equals("/")) {
-            fileObj = new HdfsFileObject("/", new Path(rootDir), user);
+            fileObj = new HdfsFileObject("/", new Path(rootDir), user, useVirtUserForCheck);
         } else {
             Path path = new Path(rootDir, currDir.substring(1));
-            fileObj = new HdfsFileObject(currDir, path, user);
+            fileObj = new HdfsFileObject(currDir, path, user, useVirtUserForCheck);
 
         }
         return fileObj;
@@ -124,7 +128,7 @@ public class HdfsFileSystemView implements FileSystemView {
 
         // strip the root directory and return
         String userFileName = physicalName.substring(rootDir.length() - 1);
-        return new HdfsFileObject(userFileName, fileObj, user);
+        return new HdfsFileObject(userFileName, fileObj, user, useVirtUserForCheck);
     }
 
     /**
@@ -139,7 +143,7 @@ public class HdfsFileSystemView implements FileSystemView {
 	        DistributedFileSystem dfs = HdfsOverFtpSystem.getDfs();
 	        FileStatus fsDir = dfs.getFileStatus(dirObj);
 
-	        if (!fsDir.isDir()) {
+	        if (!fsDir.isDirectory()) {
 	            return false;
 	        }
 

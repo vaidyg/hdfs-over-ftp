@@ -59,11 +59,13 @@ public class HdfsFileObject implements FtpFile {
 
     private HdfsUser user;
 
+    private boolean useVirtUserForCheck = false;
+
     /**
      * Constructor, internal do not use directly.
      */
     protected HdfsFileObject(final String fileName, final Path path,
-            final User user) {
+            final User user, final boolean useVirtUserForCheck) {
         if (fileName == null) {
             throw new IllegalArgumentException("fileName can not be null");
         }
@@ -81,6 +83,7 @@ public class HdfsFileObject implements FtpFile {
         this.fileName = fileName;
         this.path = path;
         this.user = (HdfsUser)user;
+        this.useVirtUserForCheck = useVirtUserForCheck;
     }
 
 
@@ -148,7 +151,7 @@ public class HdfsFileObject implements FtpFile {
 			log.debug("is directory? : " + path);
 			DistributedFileSystem dfs = HdfsOverFtpSystem.getDfs();
 			FileStatus fs = dfs.getFileStatus(path);
-			return fs.isDir();
+			return fs.isDirectory();
 		} catch (IOException e) {
 			log.debug(path + " is not dir", e);
 			return false;
@@ -180,7 +183,7 @@ public class HdfsFileObject implements FtpFile {
 			DistributedFileSystem dfs = HdfsOverFtpSystem.getDfs();
 			return dfs.isFile(path);
 		} catch (IOException e) {
-			log.debug(path + " is not file", e);
+			log.debug(path + " is not file");
 			return false;
 		}
 	}
@@ -196,7 +199,7 @@ public class HdfsFileObject implements FtpFile {
 			dfs.getFileStatus(path);
 			return true;
 		} catch (IOException e) {
-			//   log.debug(path + " does not exist", e);
+            log.debug(path + " does not exist");
 			return false;
 		}
 	}
@@ -208,13 +211,23 @@ public class HdfsFileObject implements FtpFile {
 	 */
 	public boolean isReadable() {
 		try {
+			String actionUser = user.getName();
+			boolean isInGroup = user.isGroupMember(getGroupName());
+			if (useVirtUserForCheck == false) {
+				actionUser = HdfsOverFtpSystem.getHdfsUser();
+				isInGroup = false;
+				if (HdfsOverFtpSystem.getHdfsGroup() == getGroupName()) {
+					isInGroup = true;
+				}
+			}
+
 			FsPermission permissions = getPermissions();
-			if (user.getName().equals(getOwnerName())) {
+			if (actionUser.equals(getOwnerName())) {
 				if (permissions.toString().substring(0, 1).equals("r")) {
 					log.debug("PERMISSIONS: " + path + " - " + " read allowed for user");
 					return true;
 				}
-			} else if (user.isGroupMember(getGroupName())) {
+			} else if (isInGroup == true) {
 				if (permissions.toString().substring(3, 4).equals("r")) {
 					log.debug("PERMISSIONS: " + path + " - " + " read allowed for group");
 					return true;
@@ -247,7 +260,7 @@ public class HdfsFileObject implements FtpFile {
             parentFullName = fileName.substring(0, indexOfSlash);
         }
 
-        return new HdfsFileObject(parentFullName, path.getParent(), user);
+        return new HdfsFileObject(parentFullName, path.getParent(), user, useVirtUserForCheck);
 	}
 
 	/**
@@ -257,25 +270,41 @@ public class HdfsFileObject implements FtpFile {
 	 */
 	public boolean isWritable() {
 		try {
-			FsPermission permissions = getPermissions();
-			if (user.getName().equals(getOwnerName())) {
-				if (permissions.toString().substring(1, 2).equals("w")) {
-					log.debug("PERMISSIONS: " + path + " - " + " write allowed for user");
-					return true;
-				}
-			} else if (user.isGroupMember(getGroupName())) {
-				if (permissions.toString().substring(4, 5).equals("w")) {
-					log.debug("PERMISSIONS: " + path + " - " + " write allowed for group");
-					return true;
-				}
-			} else {
-				if (permissions.toString().substring(7, 8).equals("w")) {
-					log.debug("PERMISSIONS: " + path + " - " + " write allowed for others");
-					return true;
-				}
+			if (doesExist() == false) {
+				// Does not exist - check the parent
+				return getParent().isWritable();
 			}
-			log.debug("PERMISSIONS: " + path + " - " + " write denied");
-			return false;
+			else {
+				String actionUser = user.getName();
+				boolean isInGroup = user.isGroupMember(getGroupName());
+				if (useVirtUserForCheck == false) {
+					actionUser = HdfsOverFtpSystem.getHdfsUser();
+					isInGroup = false;
+					if (HdfsOverFtpSystem.getHdfsGroup() == getGroupName()) {
+						isInGroup = true;
+					}
+				}
+
+				FsPermission permissions = getPermissions();
+				if (actionUser.equals(getOwnerName())) {
+					if (permissions.toString().substring(1, 2).equals("w")) {
+						log.debug("PERMISSIONS: " + path + " - " + " write allowed for user");
+						return true;
+					}
+				} else if (isInGroup == true) {
+					if (permissions.toString().substring(4, 5).equals("w")) {
+						log.debug("PERMISSIONS: " + path + " - " + " write allowed for group");
+						return true;
+					}
+				} else {
+					if (permissions.toString().substring(7, 8).equals("w")) {
+						log.debug("PERMISSIONS: " + path + " - " + " write allowed for others");
+						return true;
+					}
+				}
+				log.debug("PERMISSIONS: " + path + " - " + " write denied (user:" + user.getName() + "; owner:" + getOwnerName() + "; actionu:" + actionUser + "");
+				return false;
+			}
 		} catch (IOException e) {
 			return getParent().isWritable();
 		}
@@ -390,7 +419,7 @@ public class HdfsFileObject implements FtpFile {
 			DistributedFileSystem dfs = HdfsOverFtpSystem.getDfs();
 			dfs.mkdirs(path);
 
-            if (user.getName().equals(HdfsOverFtpSystem.getHdfsUser()) == false) {
+            if ((user.getName().equals(HdfsOverFtpSystem.getHdfsUser()) == false) && (useVirtUserForCheck == true)) {
                 try {
                     dfs.setOwner(path, user.getName(), user.getMainGroup());
                 }
@@ -488,7 +517,7 @@ public class HdfsFileObject implements FtpFile {
 	        for (int i = 0; i < fileStats.length; ++i) {
 	            Path fileObj = fileStats[i].getPath();
 	            String fileName = virtualFileStr + fileObj.toString();
-	            virtualFiles[i] = new HdfsFileObject(fileName, fileObj, user);
+	            virtualFiles[i] = new HdfsFileObject(fileName, fileObj, user, useVirtUserForCheck);
 	        }
 
 	        return Collections.unmodifiableList(Arrays.asList(virtualFiles));
@@ -516,7 +545,7 @@ public class HdfsFileObject implements FtpFile {
 		try {
 			DistributedFileSystem dfs = HdfsOverFtpSystem.getDfs();
 			FSDataOutputStream out = dfs.create(path);
-            if (user.getName().equals(HdfsOverFtpSystem.getHdfsUser()) == false) {
+            if ((user.getName().equals(HdfsOverFtpSystem.getHdfsUser()) == false) && (useVirtUserForCheck == true)) {
 				try {
 					dfs.setOwner(path, user.getName(), user.getMainGroup());
 				}

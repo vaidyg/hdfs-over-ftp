@@ -3,10 +3,10 @@
 jmxdomain = org.example.hdfsftp1
 
 # HDFS URI
-hdfs-uri = hdfs://masternamenode.example.org:8020
+hdfs-uri = ${hdfs-uri}
 
 # User to connect to HDFS - uses running user if not set
-hdfsuser = testu
+hdfsuser = ${hdfs-user}
 
 # Group to connect to HDFS with
 hdfsgroup = testu
@@ -28,7 +28,7 @@ usevirtuserforcheck = false
 
 ## Clear text FTP server settings
 # Uncomment the port to run clear text FTP server
-port = 21
+port = ${port}
 
 # MBean name
 mbeanname = ftp
@@ -38,7 +38,7 @@ mbeanname = ftp
 # 2300-2399 : use all ports in the range
 # 2300- : use all ports larger than 2300
 # 2300, 2305, 2400- : use 2300 or 2305 or any port larger than 2400
-data-ports = 2022-2029
+data-ports = ${data-ports}
 
 # External address - use when server is behind a proxy
 # external-address = 1.2.3.4
@@ -48,23 +48,23 @@ data-ports = 2022-2029
 
 ## SSL FTP server settings
 # Uncomment this to run SSL FTP server
-ssl-port = 990
+#ssl-port = 990
 
 # MBean name
-ssl-mbeanname = sslftp
+#ssl-mbeanname = sslftp
 
 # JKS keystore file - relative to application root or absolute
-ssl-keystore-file = sslftpkeystore.jks
+#ssl-keystore-file = sslftpkeystore.jks
 
 # JKS keystore password
-ssl-keystore-password = keystorepass
+#ssl-keystore-password = keystorepass
 
 # Passive port range
 # 2300 : only use port 2300 as the passive port
 # 2300-2399 : use all ports in the range
 # 2300- : use all ports larger than 2300
 # 2300, 2305, 2400- : use 2300 or 2305 or any port larger than 2400
-ssl-data-ports = 2322-2329
+#ssl-data-ports = 2322-2329
 
 # External address - use when server is behind a proxy
 # ssl-external-address = 1.2.3.4

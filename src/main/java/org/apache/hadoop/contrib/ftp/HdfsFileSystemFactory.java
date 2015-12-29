@@ -47,6 +47,15 @@ public class HdfsFileSystemFactory implements FileSystemFactory {
 
     private boolean caseInsensitive = false;
 
+    private boolean useVirtUserForCheck = true;
+
+    /**
+     * Constructor - set the use virtual user check.
+     */
+    protected HdfsFileSystemFactory(boolean useVirtUserForCheck) {
+        this.useVirtUserForCheck = useVirtUserForCheck;
+    }
+
     /**
      * Should the home directories be created automatically
      * @return true if the file system will create the home directory if not available
@@ -120,7 +129,7 @@ public class HdfsFileSystemFactory implements FileSystemFactory {
                     if (doesExist(dfs, homeDirPath) == false) {
                         dfs.mkdirs(homeDirPath);
                         LOG.info("Created directory " + homeDirStr);
-                        if (huser.getName().equals(HdfsOverFtpSystem.getHdfsUser()) == false) {
+                        if ((huser.getName().equals(HdfsOverFtpSystem.getHdfsUser()) == false) && (useVirtUserForCheck == true)) {
                             dfs.setOwner(homeDirPath, huser.getName(), huser.getMainGroup());
                         }
                     }
@@ -131,8 +140,7 @@ public class HdfsFileSystemFactory implements FileSystemFactory {
                 }
             }
 
-            FileSystemView fsView = new HdfsFileSystemView(user,
-                    caseInsensitive);
+            FileSystemView fsView = new HdfsFileSystemView(user, caseInsensitive, useVirtUserForCheck);
             return fsView;
         }
     }

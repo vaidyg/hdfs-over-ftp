@@ -80,4 +80,20 @@ public class HdfsOverFtpSystem {
 	public static String getHdfsUser() {
 		return hdfsuser;
 	}
+
+	/**
+	 * Get hdfsgroup
+	 *
+	 * @return hdfsgroup
+	 */
+	public static String getHdfsGroup() {
+		return hdfsgroup;
+	}
+
+	/**
+	 * Unset DFS
+	 */
+	public static void unsetDfs() {
+		dfs = null;
+	}
 }

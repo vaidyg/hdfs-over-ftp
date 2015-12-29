@@ -56,6 +56,7 @@ public class HdfsFtpServer implements FtpServer {
     private FtpServerContext serverContext;
     private String jmxdomain;
     private String mbeanname;
+    private ObjectName ftpStatsName = null;
 
     private boolean suspended = false;
 
@@ -97,29 +98,32 @@ public class HdfsFtpServer implements FtpServer {
             started = true;
 
             // MBean setup
-            mbs = ManagementFactory.getPlatformMBeanServer();
-            HdfsFtpStatistics ftpStatsBean = new HdfsFtpStatistics((DefaultFtpStatistics)serverContext.getFtpStatistics());
-            ObjectName ftpStatsName = null;
+            if ((jmxdomain != null) && (mbeanname != null)) {
+                mbs = ManagementFactory.getPlatformMBeanServer();
+                HdfsFtpStatistics ftpStatsBean = new HdfsFtpStatistics((DefaultFtpStatistics)serverContext.getFtpStatistics());
 
-            try {
-                ftpStatsName = new ObjectName("" + jmxdomain + ":name=" + mbeanname + "");
-                mbs.registerMBean(ftpStatsBean, ftpStatsName);
-            }
-            catch(Exception e) {
-                e.printStackTrace();
+                try {
+                    ftpStatsName = new ObjectName("" + jmxdomain + ":name=" + mbeanname + "");
+                    mbs.registerMBean(ftpStatsBean, ftpStatsName);
+                }
+                catch(Exception e) {
+                    LOG.error("Cannot setup JMX - " + mbeanname, e);
+                }
             }
 
 
             LOG.info("FTP server started");
-        } catch(Exception e) {
+        }
+        catch(Exception e) {
             // must close listeners that we were able to start
             for(Listener listener : startedListeners) {
                 listener.stop();
             }
 
-            if(e instanceof FtpException) {
+            if (e instanceof FtpException) {
                 throw (FtpException)e;
-            } else {
+            }
+            else {
                 throw (RuntimeException)e;
             }
 
@@ -134,6 +138,19 @@ public class HdfsFtpServer implements FtpServer {
         if (serverContext == null) {
             // we have already been stopped, ignore
             return;
+        }
+
+        // Unregister MBean
+        try {
+            if (mbs.isRegistered(ftpStatsName)) {
+                mbs.unregisterMBean(ftpStatsName);
+            }
+        }
+        catch(InstanceNotFoundException infe) {
+            LOG.debug("Cannot unregister JMX - instance not found");
+        }
+        catch(Exception e) {
+            LOG.warn("Cannot unregister JMX - " + ftpStatsName, e);
         }
 
         // stop all listeners
@@ -152,6 +169,7 @@ public class HdfsFtpServer implements FtpServer {
         }
 
         started = false;
+        LOG.info("FTP server stopped");
     }
 
     /**

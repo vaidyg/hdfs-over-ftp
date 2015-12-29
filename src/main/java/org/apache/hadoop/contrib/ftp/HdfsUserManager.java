@@ -333,7 +333,7 @@ public class HdfsUserManager extends AbstractUserManager {
 
 	private ArrayList<String> parseGroups(String groupsLine) {
 		String groupsArray[] = groupsLine.split(",");
-		return new ArrayList(Arrays.asList(groupsArray));
+		return new ArrayList<String>(Arrays.asList(groupsArray));
 	}
 
 	/**
