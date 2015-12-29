@@ -187,13 +187,14 @@ public class HdfsOverFtpServerQueueIT extends TestCase {
             uplFile.close();
 
             // Grab the message from the queue
+            log.debug("Connect to queue " + aamqQueueName + " at localhost:" + aamqOpenWirePort);
             ActiveMQConnectionFactory aamqConnFactory = new ActiveMQConnectionFactory("vm://localhost:" + aamqOpenWirePort);
             Connection aamqConn = aamqConnFactory.createConnection("user", "password");
             aamqConn.start();
             Session aamqSession = aamqConn.createSession(false, Session.AUTO_ACKNOWLEDGE);
             Destination aamqDest = aamqSession.createQueue(aamqQueueName);
             MessageConsumer aamqConsum = aamqSession.createConsumer(aamqDest);
-            Message aamqMsg = aamqConsum.receiveNoWait();
+            Message aamqMsg = aamqConsum.receive(3000);
 
             if (aamqMsg == null) {
                 fail("No message received");

@@ -15,7 +15,7 @@ hdfsgroup = testu
 # Must define at least queuehost, queueport, and queuename
 # To use Apache Slider discovery method, queue host needs to be in the form of:
 #	slider~${CLUSTER_NAME}~name_of_export(compExport)
-queuehost = 127.0.0.1
+queuehost = localhost
 queueport = ${queue-port}
 queuename = ${queue-name}
 queueuser = user
