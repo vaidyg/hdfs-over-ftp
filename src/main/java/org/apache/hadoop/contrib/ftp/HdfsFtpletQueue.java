@@ -63,6 +63,7 @@ public class HdfsFtpletQueue extends DefaultFtplet {
         String currDir = session.getFileSystemView().getWorkingDirectory().getAbsolutePath();
         String fileName = request.getArgument();
         String fullFilePath = "";
+        String clientAddr = session.getClientAddress().getAddress().getHostAddress();
 
         // Go back through proxy? ick
         // Compoent restarts - gets new port - how to know?
@@ -75,7 +76,7 @@ public class HdfsFtpletQueue extends DefaultFtplet {
         }
 
         try {
-            queueMgr.sendMessage(fullFilePath);
+            queueMgr.sendMessage(clientAddr + "|" + fullFilePath);
         }
         catch (Exception e) {
             LOG.warn("Exception", e);

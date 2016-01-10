@@ -15,18 +15,18 @@ hdfsgroup = testu
 # Must define at least queuehost, queueport, and queuename
 # To use Apache Slider discovery method, queue host needs to be in the form of:
 #	slider~${CLUSTER_NAME}~name_of_export(compExport)
-#queuehost = 127.0.0.1
-#queueport = 61616
-#queuename = myqueue
-#queueuser =
-#queuepassword =
+queuehost = localhost
+queueport = ${queue-port}
+queuename = ${queue-name}
+queueuser = user
+queuepassword = password
 
 # Use virtual user (defined in user.properties) for permissions checks
 # When set to false uses hdfsuser
 usevirtuserforcheck = false
 
 # Create missing directories
-createmissingdirs = false
+createmissingdirs = true
 
 
 ## Clear text FTP server settings

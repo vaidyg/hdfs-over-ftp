@@ -67,6 +67,7 @@ public class HdfsOverFtpServer {
 	private static String hdfsUser = null;
 	private static String hdfsGroup = null;
 	private static boolean useVirtUserForCheck = true;
+	private static boolean createMissingDirs = true;
 	private static String appRoot = "";
 	private static String jmxDomain = null;
 	private static String discoveryMethod = "static";
@@ -199,6 +200,14 @@ public class HdfsOverFtpServer {
 			log.info("virtual user for checking not set.  will use HDFS user when checking permissions");
 		}
 
+		try {
+			createMissingDirs = Boolean.parseBoolean(props.getProperty("createmissingdirs"));
+			log.info("create missing directories set - " + createMissingDirs);
+		} catch (Exception e) {
+			createMissingDirs = false;
+			log.info("create missing directories not set.  will not create missing directories");
+		}
+
 		jmxDomain = props.getProperty("jmxdomain");
 
 		queueHost = props.getProperty("queuehost");
@@ -268,8 +277,8 @@ public class HdfsOverFtpServer {
 		}
 		if ((passivePorts != null) || (externalAddress != null)) {
 			log.info("Passive mode enabled");
-			dataConFactory.setActiveEnabled(false);
 		}
+		dataConFactory.setActiveEnabled(true);
 
 		DataConnectionConfiguration dataCon = dataConFactory.createDataConnectionConfiguration();
 		listenFactory.setDataConnectionConfiguration(dataCon);
@@ -285,7 +294,7 @@ public class HdfsOverFtpServer {
 		userManager.setFile(userFile);
 		userManager.configure();
 		serverFactory.setUserManager(userManager);
-		serverFactory.setFileSystem(new HdfsFileSystemFactory(useVirtUserForCheck));
+		serverFactory.setFileSystem(new HdfsFileSystemFactory(useVirtUserForCheck, createMissingDirs));
 
 		// Only create queue ftplet if queue params are available
 		if (queueHost != null) {
@@ -324,8 +333,8 @@ public class HdfsOverFtpServer {
 		}
 		if ((sslPassivePorts != null) || (sslExternalAddress != null)) {
 			log.info("SSL passive mode enabled");
-			dataConFactory.setActiveEnabled(false);
 		}
+		dataConFactory.setActiveEnabled(true);
 
 		DataConnectionConfiguration dataCon = dataConFactory.createDataConnectionConfiguration();
 		listenFactory.setDataConnectionConfiguration(dataCon);
@@ -349,7 +358,7 @@ public class HdfsOverFtpServer {
 		userManager.setFile(userFile);
 		userManager.configure();
 		serverFactory.setUserManager(userManager);
-		serverFactory.setFileSystem(new HdfsFileSystemFactory(useVirtUserForCheck));
+		serverFactory.setFileSystem(new HdfsFileSystemFactory(useVirtUserForCheck, createMissingDirs));
 
 		// Only create queue ftplet if queue params are available
 		if (queueHost != null) {

@@ -206,9 +206,16 @@ public class HdfsOverFtpServerQueueIT extends TestCase {
                 TextMessage aamqTxtMsg = (TextMessage)aamqMsg;
                 String aamqText = aamqTxtMsg.getText();
                 log.debug("Received queue text message " + aamqText);
+                String filepathInQ = aamqText;
 
-                if (aamqText.equalsIgnoreCase("/" + uplFilename) == false) {
-                    fail("Queue message (" + aamqText + ") did not match upload filename (" + "/" + uplFilename + ")");
+                // Remove the pipe
+                if (aamqText.indexOf("|") > 0) {
+                    String[] aamqTextParts = aamqText.split("\\|");
+                    filepathInQ = aamqTextParts[1];
+                }
+
+                if (filepathInQ.equalsIgnoreCase("/" + uplFilename) == false) {
+                    fail("Queue message (" + filepathInQ + ") did not match upload filename (" + "/" + uplFilename + ")");
                 }
             }
 
@@ -227,7 +234,7 @@ public class HdfsOverFtpServerQueueIT extends TestCase {
 
             log.debug("Delete file " + uplFilename);
             if (ftpClient.deleteFile(uplFilename) == false) {
-                fail("Cannot remove directory " + uplFilename + " " + ftpClient.getReplyString());
+                fail("Cannot remove file " + uplFilename + " " + ftpClient.getReplyString());
             }
 
             ftpClient.logout();

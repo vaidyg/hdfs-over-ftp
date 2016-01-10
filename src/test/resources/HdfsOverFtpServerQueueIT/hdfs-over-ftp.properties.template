@@ -25,6 +25,9 @@ queuepassword = password
 # When set to false uses hdfsuser
 usevirtuserforcheck = false
 
+# Create missing directories
+createmissingdirs = false
+
 
 ## Clear text FTP server settings
 # Uncomment the port to run clear text FTP server
@@ -43,7 +46,7 @@ data-ports = ${data-ports}
 # External address - use when server is behind a proxy
 # external-address = 1.2.3.4
 
-# Note: If data-ports or external-address is set, server will use passive mode
+# Note: Active mode is always available.  If data-ports or external-address is set, server will also use passive mode
 
 
 ## SSL FTP server settings
@@ -69,4 +72,4 @@ data-ports = ${data-ports}
 # External address - use when server is behind a proxy
 # ssl-external-address = 1.2.3.4
 
-# Note: If ssl-data-ports or ssl-external-address is set, server will use passive mode
+# Note: Active mode is always available.  If ssl-data-ports or ssl-external-address is set, server will also use passive mode

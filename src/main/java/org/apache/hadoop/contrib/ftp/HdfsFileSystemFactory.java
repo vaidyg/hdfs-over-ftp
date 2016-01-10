@@ -49,11 +49,14 @@ public class HdfsFileSystemFactory implements FileSystemFactory {
 
     private boolean useVirtUserForCheck = true;
 
+    private boolean createMissingDirs = false;
+
     /**
      * Constructor - set the use virtual user check.
      */
-    protected HdfsFileSystemFactory(boolean useVirtUserForCheck) {
+    protected HdfsFileSystemFactory(boolean useVirtUserForCheck, boolean createMissingDirs) {
         this.useVirtUserForCheck = useVirtUserForCheck;
+        this.createMissingDirs = createMissingDirs;
     }
 
     /**
@@ -140,7 +143,7 @@ public class HdfsFileSystemFactory implements FileSystemFactory {
                 }
             }
 
-            FileSystemView fsView = new HdfsFileSystemView(user, caseInsensitive, useVirtUserForCheck);
+            FileSystemView fsView = new HdfsFileSystemView(user, caseInsensitive, useVirtUserForCheck, createMissingDirs);
             return fsView;
         }
     }

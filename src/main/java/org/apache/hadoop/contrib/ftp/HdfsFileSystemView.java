@@ -56,17 +56,19 @@ public class HdfsFileSystemView implements FileSystemView {
 
 	private boolean useVirtUserForCheck = true;
 
+	private boolean createMissingDirs = true;
+
 	/**
 	 * Constructor - set the user object.
 	 */
 	protected HdfsFileSystemView(User user) throws FtpException {
-		this(user, true, true);
+		this(user, true, true, false);
 	}
 
 	/**
 	 * Constructor - set the user object.
 	 */
-	protected HdfsFileSystemView(User user, boolean caseInsensitive, boolean useVirtUserForCheck)
+	protected HdfsFileSystemView(User user, boolean caseInsensitive, boolean useVirtUserForCheck, boolean createMissingDirs)
 			throws FtpException {
 		if (user == null) {
 			throw new IllegalArgumentException("user cannot be null");
@@ -80,6 +82,7 @@ public class HdfsFileSystemView implements FileSystemView {
 		// this.caseInsensitive = caseInsensitive;
 
 		this.useVirtUserForCheck = useVirtUserForCheck;
+		this.createMissingDirs = createMissingDirs;
 
 		// add last '/' if necessary
 		String rootDir = user.getHomeDirectory();
@@ -136,11 +139,26 @@ public class HdfsFileSystemView implements FileSystemView {
      */
     public boolean changeWorkingDirectory(String dir) {
         // not a directory - return false
+        String vdir = dir;
         dir = HdfsFileObject.getPhysicalName(rootDir, currDir, dir,
                 caseInsensitive);
         Path dirObj = new Path(dir);
         try {
 	        DistributedFileSystem dfs = HdfsOverFtpSystem.getDfs();
+
+	        if (dfs.exists(dirObj) == false) {
+	        	// Directory does not exist
+	        	if (createMissingDirs == false) {
+	        		return false;
+	        	}
+	        	else {
+		        	HdfsFileObject dirHdfsObj = new HdfsFileObject(vdir, dirObj, user, useVirtUserForCheck);
+		        	if (dirHdfsObj.mkdir() == false) {
+		        		return false;
+		        	}
+		        }
+	        }
+
 	        FileStatus fsDir = dfs.getFileStatus(dirObj);
 
 	        if (!fsDir.isDirectory()) {

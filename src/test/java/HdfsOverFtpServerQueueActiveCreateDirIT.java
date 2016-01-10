@@ -26,6 +26,13 @@ import java.net.URL;
 import java.util.Map;
 import java.util.HashMap;
 
+import javax.jms.Connection;
+import javax.jms.Destination;
+import javax.jms.Message;
+import javax.jms.MessageConsumer;
+import javax.jms.Session;
+import javax.jms.TextMessage;
+
 import junit.framework.TestCase;
 import org.junit.After;
 import org.junit.Before;
@@ -33,6 +40,8 @@ import org.junit.Test;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.apache.activemq.ActiveMQConnectionFactory;
 
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPClientConfig;
@@ -42,24 +51,29 @@ import org.apache.commons.net.ftp.FTPReply;
 import org.apache.hadoop.contrib.ftp.HdfsOverFtpServer;
 import org.apache.hadoop.contrib.ftp.tests.utils.HdfsOverFtpServerTestUtils;
 
-public class HdfsOverFtpServerHdfsUserTest extends TestCase {
+public class HdfsOverFtpServerQueueActiveCreateDirIT extends TestCase {
 
-	private static final Logger log = LoggerFactory.getLogger(HdfsOverFtpServerHdfsUserTest.class);
+	private static final Logger log = LoggerFactory.getLogger(HdfsOverFtpServerQueueActiveCreateDirIT.class);
 
     private HdfsOverFtpServerTestUtils testUtils;
     private Map<String, String> subsConfigFileVals;
+    private Map<String, String> subsAAMQConfFileVals;
     private int ftpClearPortCtl = 0;
     private int ftpClearPortPsv = 0;
+
+    private int aamqOpenWirePort = 0;
+    private String aamqQueueName = "";
+    private String aamqDataDir = "";
 
     // Get back to the root of test-classes
     private final String appRootRelPrefix = "../../../../../../";
     private String appRoot = null;
-    private String configFilesDir = "HdfsOverFtpServerHdfsUserTest";
+    private String configFilesDir = "HdfsOverFtpServerQueueActiveCreateDirIT";
 
     // HDFS
     private String hdfsUri = "";
 
-    public HdfsOverFtpServerHdfsUserTest(String name) {
+    public HdfsOverFtpServerQueueActiveCreateDirIT(String name) {
         super(name);
     }
 
@@ -93,6 +107,23 @@ public class HdfsOverFtpServerHdfsUserTest extends TestCase {
         subsConfigFileVals.put("data-ports", "" + ftpClearPortPsv);
         subsConfigFileVals.put("hdfs-uri", hdfsUri);
         subsConfigFileVals.put("hdfs-user", System.getProperty("user.name"));
+
+        // Setup ActiveMQ server
+        aamqOpenWirePort = testUtils.getFreeTCPPort();
+        aamqQueueName = "testqueue";
+        aamqDataDir = appRoot + "aamqdata";
+        File aamqDataDirObj = new File(aamqDataDir);
+        aamqDataDirObj.mkdir();
+
+        subsAAMQConfFileVals = new HashMap<String, String>();
+        subsAAMQConfFileVals.put("openwire-port", "" + aamqOpenWirePort);
+        subsAAMQConfFileVals.put("queue-name", aamqQueueName);
+        subsAAMQConfFileVals.put("activemq-data", aamqDataDir);
+        testUtils.createActiveMQServer(appRoot, subsAAMQConfFileVals);
+
+        // Add queue options to hdfs-over-ftp config
+        subsConfigFileVals.put("queue-port", "" + aamqOpenWirePort);
+        subsConfigFileVals.put("queue-name", aamqQueueName);
     }
 
     @Test
@@ -115,7 +146,6 @@ public class HdfsOverFtpServerHdfsUserTest extends TestCase {
             // Connect
             log.debug("Connecting to 127.0.0.1:" + ftpClearPortCtl);
             ftpClient.connect("127.0.0.1", ftpClearPortCtl);
-            ftpClient.enterLocalPassiveMode();
             ftpClient.login("testu", "admin");
             ftpClientReply = ftpClient.getReplyCode();
             if (FTPReply.isPositiveCompletion(ftpClientReply) == false) {
@@ -136,37 +166,70 @@ public class HdfsOverFtpServerHdfsUserTest extends TestCase {
                 log.debug(file.getName());
             }
 
-            log.debug("Make directory " + "test");
-            if (ftpClient.makeDirectory("test") == false) {
-                fail("Cannot make directory " + "test" + " " + ftpClient.getReplyString());
-            }
-
-            log.debug("Remove directory " + "test");
-            if (ftpClient.removeDirectory("test") == false) {
-                fail("Cannot remove directory " + "test" + " " + ftpClient.getReplyString());
-            }
-
             // Send a file
+            String upFolder = "acreatedir";
             String uplFilename = "hdfs-over-ftp.properties";
             log.debug("Sending " + appRoot + uplFilename);
             FileInputStream uplFile = new FileInputStream(appRoot + uplFilename);
-            if (ftpClient.storeFile(uplFilename, uplFile) == false) {
-                fail("Cannot upload file " + uplFilename + " " + ftpClient.getReplyString());
+            if (ftpClient.storeFile(upFolder + "/" + uplFilename, uplFile) == false) {
+                fail("Cannot upload file " + upFolder + "/" + uplFilename + " " + ftpClient.getReplyString());
             }
             uplFile.close();
+
+            // Grab the message from the queue
+            log.debug("Connect to queue " + aamqQueueName + " at localhost:" + aamqOpenWirePort);
+            ActiveMQConnectionFactory aamqConnFactory = new ActiveMQConnectionFactory("vm://localhost:" + aamqOpenWirePort);
+            Connection aamqConn = aamqConnFactory.createConnection("user", "password");
+            aamqConn.start();
+            Session aamqSession = aamqConn.createSession(false, Session.AUTO_ACKNOWLEDGE);
+            Destination aamqDest = aamqSession.createQueue(aamqQueueName);
+            MessageConsumer aamqConsum = aamqSession.createConsumer(aamqDest);
+            Message aamqMsg = aamqConsum.receive(3000);
+
+            if (aamqMsg == null) {
+                fail("No message received");
+            }
+            else if (aamqMsg instanceof TextMessage == false) {
+                fail("Received a message that was not text " + aamqMsg);
+            }
+            else {
+                TextMessage aamqTxtMsg = (TextMessage)aamqMsg;
+                String aamqText = aamqTxtMsg.getText();
+                log.debug("Received queue text message " + aamqText);
+                String filepathInQ = aamqText;
+
+                // Remove the pipe
+                if (aamqText.indexOf("|") > 0) {
+                    String[] aamqTextParts = aamqText.split("\\|");
+                    filepathInQ = aamqTextParts[1];
+                }
+
+                if (filepathInQ.equalsIgnoreCase("/" + upFolder + "/" + uplFilename) == false) {
+                    fail("Queue message (" + filepathInQ + ") did not match upload filename (" + "/" + upFolder + "/" + uplFilename + ")");
+                }
+            }
+
+            aamqConsum.close();
+            aamqSession.close();
+            aamqConn.close();
 
             // Get a file
             String dlFilename = "hdfs-over-ftp2.fromserver";
             log.debug("Getting " + appRoot + dlFilename);
             FileOutputStream dlFile = new FileOutputStream(new File(appRoot + dlFilename));
-            if (ftpClient.retrieveFile(uplFilename, dlFile) == false) {
-                fail("Cannot download file " + uplFilename + " / " + dlFilename + " " + ftpClient.getReplyString());
+            if (ftpClient.retrieveFile(upFolder + "/" + uplFilename, dlFile) == false) {
+                fail("Cannot download file " + upFolder + "/" + uplFilename + " / " + dlFilename + " " + ftpClient.getReplyString());
             }
             dlFile.close();
 
-            log.debug("Delete file " + uplFilename);
-            if (ftpClient.deleteFile(uplFilename) == false) {
-                fail("Cannot remove file " + uplFilename + " " + ftpClient.getReplyString());
+            log.debug("Delete file " + upFolder + "/" + uplFilename);
+            if (ftpClient.deleteFile(upFolder + "/" + uplFilename) == false) {
+                fail("Cannot remove file " + upFolder + "/" + uplFilename + " " + ftpClient.getReplyString());
+            }
+
+            log.debug("Remove directory " + upFolder);
+            if (ftpClient.removeDirectory(upFolder) == false) {
+                fail("Cannot remove directory " + upFolder + " " + ftpClient.getReplyString());
             }
 
             ftpClient.logout();
@@ -194,6 +257,7 @@ public class HdfsOverFtpServerHdfsUserTest extends TestCase {
     @After
     public void tearDown() throws Exception {
     	log.debug("Tear down");
+        testUtils.destroyActiveMQServer();
         testUtils.destroyMiniDFSCluster();
     }
 }

@@ -3,7 +3,7 @@ FTP server based on [Apache FtpServer](http://mina.apache.org/ftpserver-project/
 
 ### Features
 * Supports Apache FtpServer 1.0.6
-* Active or passive connections
+* Active and passive connections
 * SSL support
 * Passwords are stored as MD5 hashes
 * Users locked into home directory (configured per user)
@@ -11,6 +11,7 @@ FTP server based on [Apache FtpServer](http://mina.apache.org/ftpserver-project/
 * JMX for remote statistics viewing and reset
 * Can run on YARN using [Apache Slider](http://slider.incubator.apache.org/) - see [hdfs-over-ftp-slider](https://github.com/OneMainF/hdfs-over-ftp-slider)
 * Can add uploaded filename to Apache ActiveMQ queue
+* Option to create missing directories
 
 ### Requirements
 * Java (tested with Java 7)
